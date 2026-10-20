@@ -1,0 +1,20 @@
+{
+  "name": "office-transfer",
+  "version": "1.0.0",
+  "description": "Self-hosted, no-limit file transfer for office staff. WeTransfer-style workflow.",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning src/server.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch src/server.js",
+    "test": "node --no-warnings=ExperimentalWarning --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "express": "^5.3.0",
+    "nodemailer": "^10.1.7",
+    "qrcode": "^1.5.4"
+  },
+  "license": "MIT"
+}
