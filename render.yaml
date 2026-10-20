@@ -1,0 +1,34 @@
+# Render Blueprint, free instance. Files live in a Cloudflare R2 bucket (10 GB
+# free) because free instances have no disk. Fill the S3_* values in the Render
+# dashboard (Environment tab) after the first deploy; they are not stored here.
+services:
+  - type: web
+    name: office-transfer
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: STORAGE
+        value: s3
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: APP_NAME
+        value: Office Transfer
+      - key: UPLOAD_CODE
+        generateValue: true
+      - key: DEFAULT_EXPIRY_DAYS
+        value: "7"
+      - key: MAX_TRANSFER_GB
+        value: "0"

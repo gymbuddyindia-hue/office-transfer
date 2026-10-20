@@ -29,7 +29,7 @@ the sender copies the link and sends it on WhatsApp or email themselves.
 ## Run it with Docker (recommended)
 
 ```bash
-cd office-transfer
+cd office-transfer   # the clone directory
 cp .env.example .env        # edit UPLOAD_CODE at minimum
 docker compose up -d --build
 ```
@@ -87,7 +87,7 @@ blueprint to `plan: starter` with a `disk:` block and `STORAGE=local`.
 Needs Node.js 22.13 or newer.
 
 ```bash
-cd office-transfer
+cd office-transfer   # the clone directory
 npm install
 cp .env.example .env
 set -a; source .env; set +a      # or set the variables another way
