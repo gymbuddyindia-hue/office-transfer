@@ -59,3 +59,16 @@ export async function uploadFile(base, transfer, file, data, headers) {
     if (r.status !== 200) throw new Error(`chunk ${n} failed: ${r.status} ${r.text}`);
   }
 }
+
+/** POST /complete then poll until the server reports ready. Returns the final info. */
+export async function completeAndWait(base, transfer, headers) {
+  const first = await api(base, 'POST', `/api/transfers/${transfer.id}/complete`, { headers });
+  if (first.status !== 202 && first.status !== 200) return first;
+  for (let i = 0; i < 200; i++) {
+    const info = await api(base, 'GET', `/api/transfers/${transfer.id}`, { headers });
+    if (info.json.finishError) return { status: 500, json: { error: info.json.finishError }, text: info.json.finishError };
+    if (info.json.status === 'ready') return { status: 200, json: { ...first.json, ...info.json }, text: info.text };
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  throw new Error('transfer never became ready');
+}

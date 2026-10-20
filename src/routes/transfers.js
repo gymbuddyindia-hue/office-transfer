@@ -132,7 +132,7 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
 
   r.put('/:id/files/:fid/chunks/:n', loadTransfer, requireOwner, async (req, res, next) => {
     try {
-      if (req.transfer.status !== 'uploading') throw httpError(409, 'This transfer is already complete');
+      if (req.transfer.status !== 'uploading') throw httpError(409, req.transfer.status === 'finishing' ? 'This transfer is being finished, wait for it' : 'This transfer is already complete');
       const f = db.getFile(req.params.fid, req.transfer.id);
       if (!f) throw httpError(404, 'File not found in this transfer');
       const n = Number(req.params.n);
@@ -155,37 +155,67 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
     }
   });
 
-  r.post('/:id/complete', loadTransfer, requireOwner, async (req, res, next) => {
+  // Assembly of a multi-GB transfer can outlive any proxy timeout, so it runs in the
+  // background and the client polls GET /:id until status is 'ready'.
+  const finishing = new Map(); // id -> { error, emailed, emailError }
+
+  async function finishTransfer(t, link) {
+    const files = db.getFiles(t.id);
     try {
-      const t = req.transfer;
-      const files = db.getFiles(t.id);
-      if (t.status !== 'ready') {
-        for (const f of files) {
-          if (f.assembled) continue;
-          await storage.assemble(f.id, f.chunks_total, f.size);
-          db.markAssembled(f.id);
-        }
-        db.completeTransfer(t.id, Date.now());
+      for (const f of files) {
+        if (f.assembled) continue;
+        await storage.assemble(f.id, f.chunks_total, f.size);
+        db.markAssembled(f.id);
       }
-      const link = `${publicUrl(req)}/t/${t.id}`;
-      let emailed = false;
-      let emailError = null;
+      db.completeTransfer(t.id, Date.now());
       const recipients = JSON.parse(t.recipients || '[]');
-      if (mailer && recipients.length && t.status !== 'ready') {
+      const result = { emailed: false, emailError: null };
+      if (mailer && recipients.length) {
         try {
           await mailer.sendTransfer({
             to: recipients, link, title: t.title, message: t.message, senderEmail: t.sender_email,
             files, totalBytes: t.total_bytes, expiresAt: t.expires_at,
           });
-          emailed = true;
+          result.emailed = true;
         } catch (err) {
-          emailError = err.message;
+          result.emailError = err.message;
         }
       }
-      res.json({ id: t.id, link, emailed, emailError, recipients });
+      finishing.set(t.id, result);
     } catch (err) {
-      if (err.code === 'MISSING_CHUNKS') return next(httpError(409, err.message, { missing: err.missing }));
-      if (err.code === 'SIZE_MISMATCH') return next(httpError(409, err.message));
+      console.error(`finish failed for ${t.id}:`, err.message);
+      db.setStatus(t.id, 'uploading');
+      finishing.set(t.id, { error: err.code === 'ENOSPC' ? 'The server ran out of disk space while assembling the files' : err.message });
+    }
+  }
+
+  r.post('/:id/complete', loadTransfer, requireOwner, async (req, res, next) => {
+    try {
+      const t = req.transfer;
+      const link = `${publicUrl(req)}/t/${t.id}`;
+      if (t.status === 'ready') {
+        const r0 = finishing.get(t.id) ?? {};
+        return res.json({ id: t.id, status: 'ready', link, emailed: !!r0.emailed, emailError: r0.emailError ?? null, recipients: JSON.parse(t.recipients || '[]') });
+      }
+      if (t.status === 'finishing') return res.status(202).json({ id: t.id, status: 'finishing', link });
+      // Cheap pre-check so a missing chunk is reported right away with its index.
+      for (const f of db.getFiles(t.id)) {
+        if (f.assembled) continue;
+        const have = await storage.chunkStatus(f.id);
+        const missing = [];
+        for (let i = 0; i < f.chunks_total; i++) {
+          const expected = i === f.chunks_total - 1 ? f.size - i * f.chunk_size : f.chunk_size;
+          if (have.get(i) !== expected) missing.push(i);
+        }
+        if (missing.length) {
+          throw httpError(409, `File "${f.name}" is missing chunks: ${missing.slice(0, 20).join(', ')}${missing.length > 20 ? '…' : ''}`, { missing, fileId: f.id });
+        }
+      }
+      db.setStatus(t.id, 'finishing');
+      finishing.delete(t.id);
+      finishTransfer(t, link);
+      res.status(202).json({ id: t.id, status: 'finishing', link });
+    } catch (err) {
       next(err);
     }
   });
@@ -207,8 +237,13 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
     }
     if (t.status !== 'ready' && !isOwner) return next(httpError(409, 'This transfer is still uploading'));
     const files = db.getFiles(t.id).map((f) => ({ id: f.id, name: f.name, size: f.size }));
+    const fin = isOwner ? finishing.get(t.id) : undefined;
     res.json({
       id: t.id,
+      link: `${publicUrl(req)}/t/${t.id}`,
+      finishError: fin?.error,
+      emailed: fin?.emailed,
+      emailError: fin?.emailError,
       title: t.title,
       message: t.message,
       senderEmail: t.sender_email,

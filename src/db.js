@@ -38,6 +38,8 @@ export function openDb(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  // A restart mid-assembly leaves rows in 'finishing'; the chunks are still on disk, so let the client finish again.
+  db.exec(`UPDATE transfers SET status = 'uploading' WHERE status = 'finishing'`);
 
   const q = {
     insertTransfer: db.prepare(`INSERT INTO transfers
@@ -50,6 +52,8 @@ export function openDb(dbPath) {
     getFile: db.prepare('SELECT * FROM files WHERE id = ? AND transfer_id = ?'),
     markAssembled: db.prepare('UPDATE files SET assembled = 1 WHERE id = ?'),
     completeTransfer: db.prepare(`UPDATE transfers SET status = 'ready', completed_at = ? WHERE id = ?`),
+    setStatus: db.prepare('UPDATE transfers SET status = ? WHERE id = ?'),
+    resetFinishing: db.prepare(`UPDATE transfers SET status = 'uploading' WHERE status = 'finishing'`),
     bumpDownloads: db.prepare('UPDATE transfers SET download_count = download_count + 1 WHERE id = ?'),
     deleteTransfer: db.prepare('DELETE FROM transfers WHERE id = ?'),
     expired: db.prepare(`SELECT id FROM transfers WHERE expires_at IS NOT NULL AND expires_at <= ?`),
@@ -77,6 +81,8 @@ export function openDb(dbPath) {
     getFile: (fileId, transferId) => q.getFile.get(fileId, transferId) ?? null,
     markAssembled: (fileId) => q.markAssembled.run(fileId),
     completeTransfer: (id, when) => q.completeTransfer.run(when, id),
+    setStatus: (id, status) => q.setStatus.run(status, id),
+    resetFinishing: () => q.resetFinishing.run(),
     bumpDownloads: (id) => q.bumpDownloads.run(id),
     deleteTransfer: (id) => q.deleteTransfer.run(id),
     expiredIds: (now) => q.expired.all(now).map((r) => r.id),

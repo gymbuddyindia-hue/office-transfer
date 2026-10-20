@@ -30,7 +30,7 @@
         sessionStorage.removeItem(tokenKey); token = '';
         return show('locked');
       }
-      $('goneTitle').textContent = err.status === 410 ? 'This transfer has expired' : err.status === 409 ? 'Still uploading' : 'Transfer not found';
+      $('goneTitle').textContent = err.status === 410 ? 'This transfer has expired' : err.status === 409 ? 'Not ready yet' : 'Transfer not found';
       $('goneText').textContent = err.status === 409 ? 'The sender has not finished uploading yet. Try again in a moment.' : err.message;
       if (err.status === 404 || err.status === 410) forgetOwner(id);
       return show('gone');

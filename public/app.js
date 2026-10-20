@@ -240,7 +240,15 @@
         $('progressTitle').textContent = 'Finishing';
         $('progressFile').textContent = 'Assembling files on the server';
         $('cancel').disabled = true;
-        const done = await apiFetch(`/api/transfers/${tr.id}/complete`, { method: 'POST', headers: owner });
+        let done = await apiFetch(`/api/transfers/${tr.id}/complete`, { method: 'POST', headers: owner });
+        // Assembly runs on the server in the background; poll until it reports ready.
+        while (done.status !== 'ready') {
+          await new Promise((r) => setTimeout(r, 1500));
+          const info = await apiFetch(`/api/transfers/${tr.id}`, { headers: owner });
+          if (info.finishError) throw new Error(info.finishError);
+          if (info.status === 'ready') done = { ...done, status: 'ready', link: info.link, emailed: info.emailed, emailError: info.emailError, recipients: info.recipients };
+          else if (info.status === 'uploading') throw new Error('The server could not finish the transfer. Press Retry.');
+        }
         store.del(PENDING_KEY);
         rememberOwner(tr.id, {
           ownerToken: tr.ownerToken, link: done.link, title: $('title').value.trim() || files.map((f) => f.name).join(', ').slice(0, 60),

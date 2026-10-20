@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer, api, randomBytes, uploadFile } from './helpers.js';
+import { startServer, api, randomBytes, uploadFile, completeAndWait } from './helpers.js';
 
 const CHUNK = 64 * 1024;
 
@@ -65,11 +65,14 @@ test('full flow: create, chunked upload out of order, resume status, complete, i
   await uploadFile(s.base, tr, tr.files[1], small, owner);
   await uploadFile(s.base, tr, tr.files[2], empty, owner);
 
-  const done = await api(s.base, 'POST', `/api/transfers/${tr.id}/complete`, { headers: owner });
+  const done = await completeAndWait(s.base, tr, owner);
   assert.equal(done.status, 200, done.text);
   assert.equal(done.json.emailed, false);
-  // Completing twice is harmless.
-  assert.equal((await api(s.base, 'POST', `/api/transfers/${tr.id}/complete`, { headers: owner })).status, 200);
+  assert.match(done.json.link, new RegExp(`/t/${tr.id}$`));
+  // Completing twice is harmless and answers 200 with the link once ready.
+  const again = await api(s.base, 'POST', `/api/transfers/${tr.id}/complete`, { headers: owner });
+  assert.equal(again.status, 200);
+  assert.equal(again.json.status, 'ready');
   // Uploading after completion is refused.
   assert.equal((await put(0, big.subarray(0, CHUNK))).status, 409);
 
@@ -125,7 +128,7 @@ test('password protection: unlock token gates info and downloads', async (t) => 
   const tr = created.json;
   const owner = { 'x-owner-token': tr.ownerToken };
   await uploadFile(s.base, tr, tr.files[0], data, owner);
-  assert.equal((await api(s.base, 'POST', `/api/transfers/${tr.id}/complete`, { headers: owner })).status, 200);
+  assert.equal((await completeAndWait(s.base, tr, owner)).status, 200);
 
   const locked = await api(s.base, 'GET', `/api/transfers/${tr.id}`);
   assert.equal(locked.status, 401);
@@ -202,7 +205,7 @@ test('expiry and abandoned-upload cleanup remove rows and files', async (t) => {
   for (const tr of [expiring, forever]) {
     const owner = { 'x-owner-token': tr.ownerToken };
     await uploadFile(s.base, tr, tr.files[0], data, owner);
-    await api(s.base, 'POST', `/api/transfers/${tr.id}/complete`, { headers: owner });
+    await completeAndWait(s.base, tr, owner);
   }
   await uploadFile(s.base, abandoned, abandoned.files[0], data, { 'x-owner-token': abandoned.ownerToken });
 

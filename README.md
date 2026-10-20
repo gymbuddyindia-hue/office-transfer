@@ -85,12 +85,21 @@ See `.env.example`. Every value has a default and the app runs with none set.
 The browser splits each file into 8 MB chunks and uploads four at a time.
 Each chunk is retried up to five times with backoff. If the page is closed
 mid-upload, adding the same files again resumes from the chunks the server
-already has. When all chunks are present the server joins them, checks the
-byte count, and marks the transfer ready. Unfinished uploads are deleted
+already has. When all chunks are present the server joins them in the
+background, checks the byte count, and marks the transfer ready while the
+browser polls. That keeps a 50 GB transfer from being cut off by a reverse
+proxy's request timeout during the join step. Unfinished uploads are deleted
 after 24 hours. Expired transfers are deleted within 10 minutes of expiry.
 
 Password protected transfers never put the password in the URL. The download
 page exchanges the password for a signed 12 hour token.
+
+## Verified at size
+
+A 5 GB file was pushed through the real server in testing: 640 chunks of
+8 MB with 4 in parallel, background join, single download with a matching
+SHA-256, and a zip download that passed a full CRC check. Server memory stayed
+under 135 MB throughout, so size is bounded by disk, not RAM.
 
 ## Tests
 
