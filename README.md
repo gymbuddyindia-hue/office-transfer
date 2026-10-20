@@ -64,6 +64,29 @@ npm start
 On Windows PowerShell, set variables with `$env:UPLOAD_CODE="..."` before
 `npm start`.
 
+## Free public address with Cloudflare Tunnel
+
+The office PC stays behind the router. A Cloudflare Tunnel gives it a public
+HTTPS address for free, with no port forwarding and no static IP.
+
+1. Create a free Cloudflare account and add a domain you own, or use a
+   domain registered through Cloudflare. A domain is the only thing that may
+   cost money, and a cheap one is a few dollars a year.
+2. In the Cloudflare dashboard open Zero Trust, then Networks, then Tunnels,
+   and create a tunnel. Pick the Docker connector and copy the token.
+3. Add a public hostname to the tunnel, for example
+   `transfer.yourdomain.com`, pointing at `http://transfer:3000`.
+4. Put the token in `.env` as `TUNNEL_TOKEN=...` and set
+   `BASE_URL=https://transfer.yourdomain.com` so links use the public address.
+5. Start both containers:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d --build
+```
+
+Cloudflare's free plan caps a single request body at 100 MB. Uploads are
+8 MB chunks, so that cap never applies. Downloads are not capped.
+
 ## Exposing it outside the office
 
 Put it behind a reverse proxy with HTTPS (Caddy is the least effort) and set

@@ -1,0 +1,16 @@
+# Adds a free public HTTPS address via Cloudflare Tunnel so staff can use the
+# app from home or on the road, with no port forwarding on the office router.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d --build
+#
+# Needs TUNNEL_TOKEN in .env (see README, "Free public address").
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: office-transfer-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - transfer
