@@ -1,1 +1,58 @@
-<!doctype html><html><body>placeholder</body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download files</title>
+  <link rel="stylesheet" href="/styles.css">
+  <meta name="robots" content="noindex">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="dot"></span><span id="brandName">Office Transfer</span></a>
+    <nav><a href="/">Send files</a></nav>
+  </header>
+  <main>
+    <section class="card wide" id="card">
+      <div id="loading" class="muted">Loading transfer…</div>
+
+      <div id="locked" class="hidden">
+        <h1>This transfer is password protected</h1>
+        <p class="muted" id="lockedTitle"></p>
+        <form id="unlockForm" class="field" style="margin-top:12px">
+          <label for="pw">Password</label>
+          <input type="password" id="pw" autocomplete="current-password" autofocus>
+          <div class="error" id="unlockError"></div>
+          <button class="btn block" type="submit">Unlock</button>
+        </form>
+      </div>
+
+      <div id="gone" class="hidden">
+        <h1 id="goneTitle">Transfer not found</h1>
+        <p class="muted" id="goneText"></p>
+        <a class="btn secondary" href="/" style="display:inline-block;text-decoration:none;margin-top:8px">Send your own files</a>
+      </div>
+
+      <div id="ready" class="hidden">
+        <h1 id="title"></h1>
+        <div class="meta">
+          <span id="from"></span><span id="count"></span><span id="expires"></span><span id="downloads"></span>
+        </div>
+        <div class="message hidden" id="message"></div>
+        <ul class="dl-list" id="list"></ul>
+        <div class="actions">
+          <a class="btn" id="downloadAll" download>Download all (.zip)</a>
+        </div>
+        <div class="owner hidden" id="owner">
+          <p class="muted">You sent this transfer from this browser.</p>
+          <div class="linkbox"><input type="text" id="ownerLink" readonly><button class="btn small" id="copy">Copy link</button></div>
+          <div class="actions"><button class="btn danger small" id="delete">Delete transfer</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>Self-hosted. Files stay on your own server.</footer>
+  <script src="/common.js"></script>
+  <script src="/download.js"></script>
+</body>
+</html>

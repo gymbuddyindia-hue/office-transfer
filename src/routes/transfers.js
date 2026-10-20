@@ -219,6 +219,7 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
       status: t.status,
       protected: !!t.password_hash,
       isOwner,
+      accessToken: isOwner && t.password_hash ? makeAccessToken(secret, t.id) : undefined,
       recipients: isOwner ? JSON.parse(t.recipients || '[]') : undefined,
       files,
     });
