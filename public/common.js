@@ -15,7 +15,7 @@ window.OT = (() => {
     if (!expiresAt) return 'This link never expires.';
     const left = expiresAt - Date.now();
     if (left <= 0) return 'This link has expired.';
-    const days = Math.floor(left / 86400000);
+    const days = Math.round(left / 86400000);
     const hours = Math.floor((left % 86400000) / 3600000);
     const when = formatDate(expiresAt);
     if (days >= 1) return `Expires in ${days} day${days === 1 ? '' : 's'} (${when}).`;

@@ -35,7 +35,9 @@ main { flex: 1; display: flex; align-items: flex-start; justify-content: center;
 .card {
   width: 100%; max-width: 440px; background: var(--card); border-radius: var(--radius);
   box-shadow: 0 30px 60px rgba(0,0,0,.25); padding: 26px; display: flex; flex-direction: column; gap: 14px;
+  margin: 0 auto;
 }
+.done .actions { justify-content: center; }
 .card.wide { max-width: 560px; }
 h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
 h2 { font-size: 16px; margin: 0; }
@@ -78,6 +80,7 @@ details.options > div { display: flex; flex-direction: column; gap: 12px; margin
   font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 13px 22px; cursor: pointer;
   background: var(--accent); color: var(--accent-ink); font-size: 15px; transition: transform .05s, opacity .15s;
 }
+a.btn { text-decoration: none; display: inline-block; text-align: center; }
 .btn:hover { opacity: .92; }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }

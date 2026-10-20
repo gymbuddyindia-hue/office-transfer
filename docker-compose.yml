@@ -1,0 +1,12 @@
+services:
+  transfer:
+    build: .
+    container_name: office-transfer
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # Put this on the biggest disk you have. This is where every uploaded file lives.
+      - ./data:/data
