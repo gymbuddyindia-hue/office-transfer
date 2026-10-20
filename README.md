@@ -39,6 +39,16 @@ Open http://<that machine's IP>:3000 from any browser on the office network.
 Files are stored in `./data` next to the compose file. Back that folder up or
 mount it from your biggest disk.
 
+## Run it on Render (paid, persistent)
+
+A `render.yaml` blueprint sits at the repository root. In the Render
+dashboard choose New, then Blueprint, then this repository. It creates one
+Docker web service with a 20 GB disk mounted at `/data` and a random
+`UPLOAD_CODE`, which you read from the service's Environment tab. The disk
+is what keeps files across restarts, and Render only attaches disks to paid
+instances, so expect the Starter instance price plus a per-GB disk charge.
+Render's free instances have no disk and lose every file when they sleep.
+
 ## Run it without Docker
 
 Needs Node.js 22.13 or newer.
