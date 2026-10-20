@@ -30,7 +30,7 @@ export function loadConfig(env = process.env) {
     defaultExpiryDays: int('DEFAULT_EXPIRY_DAYS', 7),
     abandonedUploadHours: int('ABANDONED_UPLOAD_HOURS', 24),
     cleanupIntervalMs: int('CLEANUP_INTERVAL_MINUTES', 10) * 60 * 1000,
-    appName: env.APP_NAME || 'Office Transfer',
+    appName: env.APP_NAME || 'BuddyBeam',
     // 'local' keeps files on disk under DATA_DIR. 's3' stores them in any S3-compatible bucket
     // (Cloudflare R2, Backblaze B2, MinIO, AWS) so the server itself can be diskless.
     storage: (env.STORAGE || 'local').toLowerCase(),

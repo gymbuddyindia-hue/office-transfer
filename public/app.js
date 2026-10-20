@@ -393,7 +393,7 @@
   (async () => {
     try { config = await apiFetch('/api/config'); } catch { /* defaults */ }
     document.title = config.appName || document.title;
-    $('brandName').textContent = config.appName || 'Office Transfer';
+    $('brandName').textContent = config.appName || 'BuddyBeam';
     $('expiry').value = String(config.defaultExpiryDays ?? 7);
     $('uploadCodeField').classList.toggle('hidden', !config.uploadCodeRequired);
     $('uploadCode').value = store.get(CODE_KEY, '');

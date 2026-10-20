@@ -1,7 +1,7 @@
 {
-  "name": "office-transfer",
+  "name": "buddybeam",
   "version": "1.0.0",
-  "description": "Self-hosted, no-limit file transfer for office staff. WeTransfer-style workflow.",
+  "description": "BuddyBeam: GymBuddy India's self-hosted, no-limit file transfer. WeTransfer-style workflow.",
   "private": true,
   "type": "module",
   "engines": {

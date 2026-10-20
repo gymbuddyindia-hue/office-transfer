@@ -1,11 +1,11 @@
-# Office Transfer
+# BuddyBeam
 
-A self-hosted file transfer tool with the WeTransfer workflow: add files, get a
+GymBuddy India's own file transfer, for everything WhatsApp will not send (anything over 2 GB). A self-hosted file transfer tool with the WeTransfer workflow: add files, get a
 link, share it. No account, no ads, no size cap beyond your own disk.
 
 ## What you get that WeTransfer free does not
 
-| | WeTransfer free | Office Transfer |
+| | WeTransfer free | BuddyBeam |
 |---|---|---|
 | Size per transfer | 2 GB | Your disk |
 | Link expiry | 7 days, fixed | 1 day to 90 days, or never |

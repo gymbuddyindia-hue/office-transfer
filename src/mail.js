@@ -19,6 +19,7 @@ export function createMailer(smtp, appName) {
         `\nDownload: ${link}\n`,
         list,
         `\n${expiry}`,
+        '\nGYMBUDDY INDIA | Your consistency partner. Your pocket trainer. | Instagram: @gymbuddy_india',
       ].join('\n');
       await transport.sendMail({
         from: smtp.from,

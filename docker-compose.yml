@@ -1,7 +1,7 @@
 services:
   transfer:
     build: .
-    container_name: office-transfer
+    container_name: buddybeam
     restart: unless-stopped
     ports:
       - "3000:3000"

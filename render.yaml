@@ -25,7 +25,7 @@ services:
       - key: S3_REGION
         value: auto
       - key: APP_NAME
-        value: Office Transfer
+        value: BuddyBeam
       - key: UPLOAD_CODE
         generateValue: true
       - key: DEFAULT_EXPIRY_DAYS
