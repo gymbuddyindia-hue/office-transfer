@@ -10,7 +10,7 @@ export async function startServer(envOverrides = {}) {
   const config = loadConfig({ ...process.env, SMTP_HOST: '', ...env });
   // chunk size override in bytes for small test chunks
   if (env.CHUNK_BYTES) config.chunkSize = Number(env.CHUNK_BYTES);
-  const inst = createApp(config);
+  const inst = await createApp(config);
   const server = await new Promise((resolve) => {
     const s = inst.app.listen(0, '127.0.0.1', () => resolve(s));
   });
@@ -21,7 +21,7 @@ export async function startServer(envOverrides = {}) {
     ...inst,
     async stop() {
       await new Promise((r) => server.close(r));
-      inst.close();
+      await inst.close();
       fs.rmSync(dataDir, { recursive: true, force: true });
     },
   };

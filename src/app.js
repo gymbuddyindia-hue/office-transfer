@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 import { openDb } from './db.js';
 import { Storage } from './storage.js';
+import { S3Storage } from './storage-s3.js';
+import { restoreDb, startDbSync } from './dbsync.js';
 import { createMailer } from './mail.js';
 import { transfersRouter, deleteTransfer, httpError } from './routes/transfers.js';
 import { downloadRouter } from './routes/download.js';
@@ -24,9 +26,23 @@ function loadSecret(dataDir) {
   }
 }
 
-export function createApp(config) {
-  const db = openDb(config.dbPath);
-  const storage = new Storage(config);
+export async function createApp(config) {
+  let dbSync = null;
+  let storage;
+  let db;
+  if (config.storage === 's3') {
+    // The S3 backend needs the db for part tracking and the db may need the bucket for restore.
+    const probe = new S3Storage(config, null);
+    const restored = config.dbSync ? await restoreDb(probe, config.dbPath) : false;
+    db = openDb(config.dbPath);
+    probe.db = db;
+    storage = probe;
+    if (config.dbSync) dbSync = startDbSync({ db, storage, dbPath: config.dbPath, debounceMs: config.dbSyncDebounceMs });
+    if (restored) console.log('restored transfer index from bucket');
+  } else {
+    db = openDb(config.dbPath);
+    storage = new Storage(config);
+  }
   const mailer = createMailer(config.smtp, config.appName);
   const secret = loadSecret(config.dataDir);
   const publicUrl = (req) => config.baseUrl || `${req.protocol}://${req.get('host')}`;
@@ -53,6 +69,7 @@ export function createApp(config) {
     defaultExpiryDays: config.defaultExpiryDays,
     maxTransferBytes: config.maxTransferBytes,
     chunkSize: config.chunkSize,
+    storage: config.storage,
   }));
   app.get('/api/transfers/:id/qr.svg', async (req, res, next) => {
     try {
@@ -99,5 +116,8 @@ export function createApp(config) {
     return removed;
   }
 
-  return { app, db, storage, cleanup, close: () => db.close() };
+  return {
+    app, db, storage, cleanup, dbSync,
+    close: async () => { if (dbSync) await dbSync.stop(); db.close(); },
+  };
 }

@@ -15,14 +15,13 @@ link, share it. No account, no ads, no size cap beyond your own disk.
 | Delete a sent transfer | No | Yes, from the browser that sent it |
 | Download counter | No | Yes |
 | QR code for the link | No | Yes |
-| Where files live | WeTransfer's cloud | Your own machine |
+| Where files live | WeTransfer's cloud | Your own machine, or your own R2 bucket |
 
 ## Honest limits
 
-Free and unlimited only hold because the files sit on hardware you already
-own. A free cloud tier without a persistent disk (Render free, Vercel,
-Netlify) deletes everything on restart and is not a supported way to run this.
-Run it on an office PC, a NAS, or a VPS with a mounted volume.
+Free and unlimited together only hold on hardware you already own: an office
+PC, a NAS, or a VPS with a mounted volume. The free cloud setup below is free
+but not unlimited, since it rides on Cloudflare R2's 10 GB free storage.
 
 Email notifications work only if you give it an SMTP account. Without one,
 the sender copies the link and sends it on WhatsApp or email themselves.
@@ -39,15 +38,49 @@ Open http://<that machine's IP>:3000 from any browser on the office network.
 Files are stored in `./data` next to the compose file. Back that folder up or
 mount it from your biggest disk.
 
-## Run it on Render (paid, persistent)
+## Free cloud setup: Render free + Cloudflare R2 free
 
-A `render.yaml` blueprint sits at the repository root. In the Render
-dashboard choose New, then Blueprint, then this repository. It creates one
-Docker web service with a 20 GB disk mounted at `/data` and a random
-`UPLOAD_CODE`, which you read from the service's Environment tab. The disk
-is what keeps files across restarts, and Render only attaches disks to paid
-instances, so expect the Starter instance price plus a per-GB disk charge.
-Render's free instances have no disk and lose every file when they sleep.
+This is the zero-cost way to run it on the internet with no office PC. The
+server runs on a Render free instance and every file lives in a Cloudflare R2
+bucket, so nothing is lost when the free instance restarts.
+
+What the free tiers give you, as of this writing:
+
+| | Limit |
+|---|---|
+| R2 storage | 10 GB stored at any one time, then about 0.015 USD per GB per month |
+| R2 downloads | Free, no egress charge |
+| Render free instance | 750 hours a month, sleeps after 15 minutes idle, 512 MB RAM |
+| Render bandwidth | 100 GB a month outbound; single-file downloads bypass Render entirely |
+
+With a 7 day expiry the 10 GB is a rolling window, so an office sharing a few
+GB a week stays free. The first visit after the instance sleeps takes about a
+minute to wake. Uploads are capped only by the 10 GB bucket.
+
+Steps:
+
+1. Cloudflare dashboard, R2, create a bucket named `office-transfer`. Keep
+   the default location.
+2. On the bucket, Settings, add a lifecycle rule that aborts incomplete
+   multipart uploads after 2 days, so interrupted uploads never count against
+   storage.
+3. R2, Manage R2 API tokens, create a token with Object Read and Write on that
+   bucket. Note the Access Key ID, Secret Access Key, and the S3 endpoint,
+   which looks like `https://<account-id>.r2.cloudflarestorage.com`.
+4. Render dashboard, New, Blueprint, pick this repository. It reads
+   `render.yaml` and creates one free web service.
+5. On the service, Environment tab, fill `S3_ENDPOINT`, `S3_BUCKET`,
+   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and set `BASE_URL` to the
+   service's `onrender.com` address. Read `UPLOAD_CODE` from the same tab and
+   give it to staff.
+6. Open the service URL.
+
+The same `STORAGE=s3` settings work with Backblaze B2 (10 GB free) and MinIO.
+
+## Paid upgrade on Render
+
+If 10 GB is not enough, either pay R2 per GB (it is cheap) or switch the
+blueprint to `plan: starter` with a `disk:` block and `STORAGE=local`.
 
 ## Run it without Docker
 

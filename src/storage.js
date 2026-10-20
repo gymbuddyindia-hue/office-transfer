@@ -11,6 +11,16 @@ export class Storage {
     fs.mkdirSync(tmpDir, { recursive: true });
   }
 
+  /** Called once per file at transfer creation. Local disk needs nothing. */
+  async prepareFiles() {}
+
+  /** Null means "stream it through this server"; the S3 backend returns a presigned URL instead. */
+  async downloadUrl() { return null; }
+
+  readStream(fileId, range) {
+    return fs.createReadStream(this.finalPath(fileId), range ? { start: range.start, end: range.end } : undefined);
+  }
+
   chunkDir(fileId) { return path.join(this.tmpDir, fileId); }
   chunkPath(fileId, n) { return path.join(this.chunkDir(fileId), String(n)); }
   finalPath(fileId) { return path.join(this.filesDir, fileId); }

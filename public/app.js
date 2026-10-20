@@ -174,7 +174,7 @@
     const files = tr.files.map((f) => {
       // Server sanitised the name; match by original index (same order as submitted).
       const local = picked.find((p) => p.size === f.size && (p.name === f.name || sanitiseLike(p.name) === f.name));
-      return { ...f, blob: local.file, done: new Set(), inflight: new Map() };
+      return { ...f, chunkSize: f.chunkSize || tr.chunkSize, blob: local.file, done: new Set(), inflight: new Map() };
     });
     run = { tr, files, controller, startedAt: Date.now(), startedBytes: 0 };
 
@@ -214,8 +214,8 @@
         const worker = async () => {
           while (queue.length && !failure && !controller.signal.aborted) {
             const { f, n } = queue.shift();
-            const start = n * tr.chunkSize;
-            const blob = f.blob.slice(start, Math.min(f.size, start + tr.chunkSize));
+            const start = n * f.chunkSize;
+            const blob = f.blob.slice(start, Math.min(f.size, start + f.chunkSize));
             for (let attempt = 0; ; attempt++) {
               try {
                 await putChunk(`/api/transfers/${tr.id}/files/${f.id}/chunks/${n}`, blob, owner,
@@ -270,7 +270,7 @@
   function doneBytes() {
     let b = 0;
     for (const f of run.files) {
-      for (const n of f.done) b += n === f.chunksTotal - 1 ? f.size - n * run.tr.chunkSize : run.tr.chunkSize;
+      for (const n of f.done) b += n === f.chunksTotal - 1 ? f.size - n * f.chunkSize : f.chunkSize;
       for (const v of f.inflight.values()) b += v;
     }
     return b;
@@ -291,7 +291,7 @@
     $('progressStat').textContent = `${formatBytes(done)} of ${formatBytes(total)}` + (rate ? ` at ${formatBytes(rate)}/s` : '') + (left !== null && left > 1 ? `, about ${fmtTime(left)} left` : '');
     for (const f of run.files) {
       let fb = 0;
-      for (const n of f.done) fb += n === f.chunksTotal - 1 ? f.size - n * run.tr.chunkSize : run.tr.chunkSize;
+      for (const n of f.done) fb += n === f.chunksTotal - 1 ? f.size - n * f.chunkSize : f.chunkSize;
       for (const v of f.inflight.values()) fb += v;
       f.el.style.width = `${f.size ? Math.min(100, (fb / f.size) * 100) : 100}%`;
     }

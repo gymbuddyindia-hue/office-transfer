@@ -65,17 +65,21 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
 
       const now = Date.now();
       const chunkSize = config.chunkSize;
+      const MB = 1024 * 1024;
       let totalBytes = 0;
       const fileRows = files.map((f) => {
         const size = Number(f.size);
         if (!Number.isInteger(size) || size < 0) throw httpError(400, `Bad size for file "${f.name}"`);
         totalBytes += size;
+        // S3 multipart allows 10,000 parts per object, so very large files get bigger chunks.
+        const minChunk = Math.ceil(size / 10000);
+        const fileChunk = config.storage === 's3' && minChunk > chunkSize ? Math.ceil(minChunk / MB) * MB : chunkSize;
         return {
           id: newId(),
           name: sanitiseName(f.name),
           size,
-          chunkSize,
-          chunksTotal: Math.max(1, Math.ceil(size / chunkSize)),
+          chunkSize: fileChunk,
+          chunksTotal: Math.max(1, Math.ceil(size / fileChunk)),
         };
       });
       if (config.maxTransferBytes && totalBytes > config.maxTransferBytes) {
@@ -100,13 +104,18 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
           return next(httpError(507, `Not enough disk space on the server: ${free} bytes free, ${totalBytes} needed`));
         }
         db.createTransfer(transfer, fileRows);
-        res.status(201).json({
-          id: transfer.id,
-          ownerToken: transfer.ownerToken,
-          link: `${publicUrl(req)}/t/${transfer.id}`,
-          chunkSize,
-          expiresAt: transfer.expiresAt,
-          files: fileRows.map((f) => ({ id: f.id, name: f.name, size: f.size, chunksTotal: f.chunksTotal })),
+        return storage.prepareFiles(fileRows).then(() => {
+          res.status(201).json({
+            id: transfer.id,
+            ownerToken: transfer.ownerToken,
+            link: `${publicUrl(req)}/t/${transfer.id}`,
+            chunkSize,
+            expiresAt: transfer.expiresAt,
+            files: fileRows.map((f) => ({ id: f.id, name: f.name, size: f.size, chunkSize: f.chunkSize, chunksTotal: f.chunksTotal })),
+          });
+        }, async (err) => {
+          await deleteTransfer({ db, storage }, transfer.id).catch(() => {});
+          throw err;
         });
       }).catch(next);
     } catch (err) {
@@ -143,7 +152,7 @@ export function transfersRouter({ db, storage, config, mailer, secret, publicUrl
         req.resume();
         throw httpError(400, `Chunk ${n} should be ${expected} bytes, got ${declared}`);
       }
-      const written = await storage.writeChunk(f.id, n, req);
+      const written = await storage.writeChunk(f.id, n, req, expected);
       if (written !== expected) {
         await storage.removeChunk(f.id, n);
         throw httpError(400, `Chunk ${n} should be ${expected} bytes, received ${written}`);

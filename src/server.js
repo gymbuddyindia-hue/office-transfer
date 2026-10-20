@@ -2,7 +2,7 @@ import { loadConfig } from './config.js';
 import { createApp } from './app.js';
 
 const config = loadConfig();
-const { app, cleanup, close } = createApp(config);
+const { app, cleanup, close } = await createApp(config);
 
 const server = app.listen(config.port, config.host, () => {
   console.log(`${config.appName} listening on http://${config.host}:${config.port}`);
@@ -23,8 +23,8 @@ cleanup().catch((err) => console.error('cleanup error', err));
 
 function shutdown() {
   clearInterval(timer);
-  server.close(() => { close(); process.exit(0); });
-  setTimeout(() => process.exit(0), 5000).unref();
+  server.close(() => { Promise.resolve(close()).finally(() => process.exit(0)); });
+  setTimeout(() => process.exit(0), 8000).unref();
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
